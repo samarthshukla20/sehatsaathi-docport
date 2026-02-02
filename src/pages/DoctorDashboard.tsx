@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Stethoscope } from "@phosphor-icons/react";
 import { 
   Activity, Bell, Calendar, History, BarChart2, Heart, 
   Siren, User, PlayCircle, Check, X, Menu, MapPin
@@ -166,7 +167,7 @@ const DoctorDashboard = () => {
       <aside className="hidden md:flex w-72 flex-col border-r bg-white px-6 py-8 z-20">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-sky-600 text-white shadow-lg shadow-emerald-200">
-            <Heart className="h-6 w-6 fill-current" />
+            <Stethoscope size={24} weight="fill" />
           </div>
           <span className="text-2xl font-bold tracking-tight text-slate-900">SehatSaathi</span>
         </div>
@@ -207,7 +208,7 @@ const DoctorDashboard = () => {
              <div className="absolute top-0 right-0 p-32 bg-white/10 rounded-full blur-3xl -translate-y-1/2 translate-x-1/2" />
              <div className="relative z-10">
                <div className="flex items-center gap-2 mb-4 text-emerald-100 font-medium"><Activity className="h-5 w-5" /><span>Real-time Overview</span></div>
-               <h1 className="text-3xl md:text-5xl font-bold mb-4">Welcome back, Dr. Sharma</h1>
+               <h1 className="text-3xl md:text-5xl font-bold mb-4">Welcome back, Doctor</h1>
                <p className="text-lg text-emerald-50">You have <span className="font-bold text-white bg-white/20 px-2 rounded">{requests.length} active alerts</span>.</p>
              </div>
           </div>
