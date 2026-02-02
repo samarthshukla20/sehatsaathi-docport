@@ -178,7 +178,7 @@ const DoctorDashboard = () => {
         </nav>
         <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mt-auto">
            <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold">DS</div>
-           <div><p className="text-sm font-bold">Dr. Sharma</p><p className="text-xs text-slate-500">General Physician</p></div>
+           <div><p className="text-sm font-bold">Doctor</p><p className="text-xs text-slate-500">General Physician</p></div>
         </div>
       </aside>
 
