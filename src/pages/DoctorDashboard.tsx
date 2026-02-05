@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { Stethoscope } from "@phosphor-icons/react";
 import { 
   Activity, Bell, Calendar, History, Heart, 
-  Siren, Menu, MapPin, Check, WifiOff
+  Siren, Menu, MapPin, Check, WifiOff, LogOut // 1. Added LogOut Icon
 } from "lucide-react";
 import { supabase } from "../lib/supabase"; 
-// 1. IMPORT THE NEW COMPONENT
 import HistoryTab from "../pages/HistoryTab"; 
+import { useAuth } from "../contexts/AuthContext"; // 2. Import Auth
 
 // --- UTILITY ---
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -40,6 +40,8 @@ const Switch = ({ checked, onCheckedChange }: any) => (
 
 // --- MAIN DASHBOARD ---
 const DoctorDashboard = () => {
+  const { user, logout } = useAuth(); // 3. Get User & Logout
+  
   const [isOnline, setIsOnline] = useState(true); 
   const [activeTab, setActiveTab] = useState("live");
   const [showPopup, setShowPopup] = useState(false);
@@ -62,7 +64,7 @@ const DoctorDashboard = () => {
   const liveRequests = requests.filter(r => !isResolved(r.status, r.id));
   const historyRequests = requests.filter(r => isResolved(r.status, r.id));
 
-  // --- 1. INITIAL LOAD ---
+  // --- INITIAL LOAD ---
   useEffect(() => {
     const loadData = async () => {
       console.log("🔄 Loading Data...");
@@ -76,21 +78,16 @@ const DoctorDashboard = () => {
         .from('Hospital_Responses')
         .select('emergency_id');
 
-      // 1. Build Responded Set
       const ids = new Set((responses || []).map((r: any) => r.emergency_id));
       setRespondedIds(ids);
 
-      // 2. Set Requests
       if (allRequests) {
         setRequests(allRequests);
-
-        // 3. CHECK FOR POPUP ON LOAD
         const pending = allRequests.find((r: any) => 
             !ids.has(r.id) && r.status !== 'Accepted' && r.status !== 'Declined'
         );
 
         if (pending && isOnlineRef.current) {
-            console.log("🚨 Pending Request Found on Load:", pending);
             setCurrentEmergency(pending);
             setShowPopup(true);
         }
@@ -98,14 +95,12 @@ const DoctorDashboard = () => {
     };
     loadData();
 
-    // --- 2. REALTIME LISTENER ---
     const channel = supabase
       .channel('public:Emergencies')
       .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'Emergencies' }, (payload) => {
         const newReq = payload.new;
         setRequests((prev) => [newReq, ...prev]);
 
-        // 🔥 POPUP LOGIC
         const isNotResolved = newReq.status !== 'Accepted' && newReq.status !== 'Declined';
         if (isOnlineRef.current && isNotResolved) {
             setCurrentEmergency(newReq);
@@ -120,16 +115,14 @@ const DoctorDashboard = () => {
     return () => { supabase.removeChannel(channel); };
   }, []);
 
-  // --- 3. HANDLE RESPONSE ---
+  // --- HANDLE RESPONSE ---
   const handleResponse = async (accepted: boolean) => {
     if (!currentEmergency) return;
 
-    // A. INSTANT UI UPDATE
     setShowPopup(false); 
     setRespondedIds(prev => new Set(prev).add(currentEmergency.id)); 
     setRequests(prev => prev.map(r => r.id === currentEmergency.id ? { ...r, status: accepted ? 'Accepted' : 'Declined' } : r));
 
-    // B. DATABASE UPDATES
     await supabase.from('Hospital_Responses').insert([{
         emergency_id: currentEmergency.id,   
         hospital_name: "City General Hospital", 
@@ -147,7 +140,6 @@ const DoctorDashboard = () => {
     setCurrentEmergency(null);
   };
 
-  // Timer Animation
   useEffect(() => {
     if (showPopup) {
       setProgress(100);
@@ -161,6 +153,12 @@ const DoctorDashboard = () => {
     return diff < 1 ? "Just now" : `${diff}m ago`;
   };
 
+  // Helper to get initials (e.g., "Rajesh Sharma" -> "RS")
+  const getInitials = (name: string) => {
+    if (!name) return "Dr";
+    return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  };
+
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
       
@@ -172,6 +170,7 @@ const DoctorDashboard = () => {
           </div>
           <span className="text-2xl font-bold tracking-tight text-slate-900">SehatSaathi</span>
         </div>
+        
         <nav className="space-y-2 flex-1">
           <NavButton 
             active={activeTab === "live"} 
@@ -192,10 +191,26 @@ const DoctorDashboard = () => {
             label={`History (${historyRequests.length})`} 
           />
         </nav>
-        <div className="flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mt-auto">
-           <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold">DS</div>
-           <div><p className="text-sm font-bold">Doctor</p><p className="text-xs text-slate-500">General Physician</p></div>
-        </div>
+
+        {/* 4. LOGOUT PROFILE SECTION */}
+        <button 
+          onClick={logout}
+          className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mt-auto hover:bg-red-50 hover:border-red-100 transition-all text-left"
+          title="Click to Logout"
+        >
+           <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold group-hover:bg-red-100 group-hover:text-red-600 transition-colors">
+             {getInitials(user?.name || "")}
+           </div>
+           <div className="flex-1 min-w-0">
+             <p className="text-sm font-bold truncate group-hover:text-red-700 transition-colors">
+               {user?.name || "Doctor"}
+             </p>
+             <p className="text-xs text-slate-500 truncate group-hover:text-red-400">
+               Doctor
+             </p>
+           </div>
+           <LogOut className="h-5 w-5 text-slate-400 group-hover:text-red-500 transition-colors" />
+        </button>
       </aside>
 
       {/* MAIN CONTENT */}
@@ -231,7 +246,7 @@ const DoctorDashboard = () => {
                    {isOnline ? <Activity className="h-5 w-5" /> : <WifiOff className="h-5 w-5" />}
                    <span>{isOnline ? "Real-time Overview" : "You are Offline"}</span>
                  </div>
-                 <h1 className="text-3xl md:text-5xl font-bold mb-4">Welcome back, Doctor</h1>
+                 <h1 className="text-3xl md:text-5xl font-bold mb-4">Welcome back, {user?.name?.split(" ")[0] || "Doctor"}</h1>
                  <p className="text-lg text-emerald-50">
                     {isOnline 
                       ? <>You have <span className="font-bold text-white bg-white/20 px-2 rounded">{liveRequests.length} active alerts</span>.</>
