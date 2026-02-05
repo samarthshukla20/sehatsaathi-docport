@@ -7,7 +7,7 @@ import DoctorDashboard from "./pages/DoctorDashboard";
 import Login from "./pages/Login";
 
 // --- 🛡️ SIMPLE GUARD ---
-const ProtectedRoute = ({ children }: { children: JSX.Element }) => {
+const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
   const { user, isLoading } = useAuth();
 
   if (isLoading) {
