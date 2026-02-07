@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from "react";
 import { Stethoscope } from "@phosphor-icons/react";
 import { 
-  Activity, Bell, Calendar, History, Heart, 
-  Siren, Menu, MapPin, Check, WifiOff, LogOut 
+  Activity, Bell, Calendar, History, 
+  Siren, Menu, MapPin, Check, WifiOff, LogOut, X 
 } from "lucide-react";
 import { supabase } from "../lib/supabase"; 
 import HistoryTab from "../pages/HistoryTab"; 
@@ -40,13 +40,13 @@ const Switch = ({ checked, onCheckedChange }: any) => (
 
 // --- MAIN DASHBOARD ---
 const DoctorDashboard = () => {
-  const { user, logout } = useAuth(); // We need 'user' to get the ID
+  const { user, logout } = useAuth(); 
   
   const [isOnline, setIsOnline] = useState(true); 
   const [activeTab, setActiveTab] = useState("live");
   const [showPopup, setShowPopup] = useState(false);
   const [progress, setProgress] = useState(100);
-  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false); // 📱 Mobile Menu State
   
   const [currentEmergency, setCurrentEmergency] = useState<any>(null);
   const [requests, setRequests] = useState<any[]>([]);
@@ -117,14 +117,12 @@ const DoctorDashboard = () => {
 
   // --- HANDLE RESPONSE ---
   const handleResponse = async (accepted: boolean) => {
-    if (!currentEmergency || !user) return; // Ensure user is present
+    if (!currentEmergency || !user) return; 
 
-    // 1. Optimistic UI Update
     setShowPopup(false); 
     setRespondedIds(prev => new Set(prev).add(currentEmergency.id)); 
     setRequests(prev => prev.map(r => r.id === currentEmergency.id ? { ...r, status: accepted ? 'Accepted' : 'Declined' } : r));
 
-    // 2. Insert Response (Now includes Doctor ID)
     await supabase.from('Hospital_Responses').insert([{
         emergency_id: currentEmergency.id,   
         hospital_name: "City General Hospital", 
@@ -132,10 +130,9 @@ const DoctorDashboard = () => {
         medical_advice: accepted ? "Ambulance dispatched." : "Redirecting.",
         eta: accepted ? "10 mins" : "N/A",
         responded_at: new Date().toISOString(),
-        responded_by_id: user.id // <--- 🌟 NEW FIELD ADDED HERE
+        responded_by_id: user.id 
     }]);
 
-    // 3. Update Emergency Status
     await supabase
         .from('Emergencies')
         .update({ status: accepted ? 'Accepted' : 'Declined' })
@@ -165,7 +162,7 @@ const DoctorDashboard = () => {
   return (
     <div className="flex h-screen w-full bg-slate-50 text-slate-900 font-sans overflow-hidden">
       
-      {/* SIDEBAR */}
+      {/* --- DESKTOP SIDEBAR --- */}
       <aside className="hidden md:flex w-72 flex-col border-r bg-white px-6 py-8 z-20">
         <div className="flex items-center gap-3 mb-10 px-2">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-sky-600 text-white shadow-lg shadow-emerald-200">
@@ -195,7 +192,7 @@ const DoctorDashboard = () => {
           />
         </nav>
 
-        {/* LOGOUT PROFILE SECTION */}
+        {/* LOGOUT DESKTOP */}
         <button 
           onClick={logout}
           className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mt-auto hover:bg-red-50 hover:border-red-100 transition-all text-left"
@@ -216,10 +213,11 @@ const DoctorDashboard = () => {
         </button>
       </aside>
 
-      {/* MAIN CONTENT */}
+      {/* --- MAIN CONTENT --- */}
       <main className="flex-1 flex flex-col relative h-full">
         <header className="h-20 px-6 md:px-10 flex items-center justify-between bg-white/80 backdrop-blur-md sticky top-0 z-30 border-b border-slate-100">
           <div className="flex md:hidden items-center gap-3">
+            {/* 🍔 HAMBURGER BUTTON */}
             <Button variant="ghost" size="icon" onClick={() => setIsMenuOpen(true)}><Menu className="h-6 w-6" /></Button>
             <span className="font-bold text-lg">SehatSaathi</span>
           </div>
@@ -323,7 +321,70 @@ const DoctorDashboard = () => {
         </div>
       </main>
 
-      {/* MOBILE NAV */}
+      {/* --- 📱 MOBILE MENU DRAWER (SLIDE-IN) --- */}
+      {isMenuOpen && (
+        <div className="fixed inset-0 z-50 flex justify-start">
+          {/* Backdrop (Click to close) */}
+          <div 
+            className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm animate-in fade-in"
+            onClick={() => setIsMenuOpen(false)}
+          />
+          
+          {/* Drawer Content */}
+          <div className="relative w-3/4 max-w-xs bg-white h-full shadow-2xl p-6 flex flex-col animate-in slide-in-from-left">
+            <div className="flex items-center justify-between mb-8">
+              <span className="text-xl font-bold text-slate-900">Menu</span>
+              <button onClick={() => setIsMenuOpen(false)} className="p-2 bg-slate-100 rounded-full text-slate-500">
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            <nav className="space-y-2 flex-1">
+              <NavButton 
+                active={activeTab === "live"} 
+                onClick={() => { setActiveTab("live"); setIsMenuOpen(false); }} 
+                icon={Activity} 
+                label={`Live Alerts`} 
+              />
+              <NavButton 
+                active={activeTab === "schedule"} 
+                onClick={() => { setActiveTab("schedule"); setIsMenuOpen(false); }} 
+                icon={Calendar} 
+                label="Appointments" 
+              />
+              <NavButton 
+                active={activeTab === "history"} 
+                onClick={() => { setActiveTab("history"); setIsMenuOpen(false); }} 
+                icon={History} 
+                label="History" 
+              />
+            </nav>
+
+            {/* 🚨 MOBILE LOGOUT BUTTON */}
+            <div className="mt-auto border-t border-slate-100 pt-6">
+              <div className="flex items-center gap-3 mb-4 px-2">
+                 <div className="h-10 w-10 rounded-full bg-sky-100 flex items-center justify-center text-sky-700 font-bold">
+                   {getInitials(user?.name || "")}
+                 </div>
+                 <div>
+                   <p className="text-sm font-bold text-slate-900">{user?.name || "Doctor"}</p>
+                   <p className="text-xs text-slate-500">Doctor</p>
+                 </div>
+              </div>
+              <Button 
+                variant="destructive" 
+                className="w-full gap-2" 
+                onClick={logout}
+              >
+                <LogOut className="h-4 w-4" /> Sign Out
+              </Button>
+            </div>
+
+          </div>
+        </div>
+      )}
+
+      {/* MOBILE BOTTOM NAV (Optional - kept if you want quick switching) */}
       <div className="md:hidden fixed bottom-0 inset-x-0 h-16 bg-white border-t border-slate-200 flex justify-around items-center z-40 px-2 pb-safe">
          <MobileNavItem icon={Activity} label="Live" active={activeTab === 'live'} onClick={() => setActiveTab('live')} />
          <MobileNavItem icon={Calendar} label="Schedule" active={activeTab === 'schedule'} onClick={() => setActiveTab('schedule')} />
