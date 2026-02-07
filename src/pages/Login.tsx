@@ -66,7 +66,7 @@ const Login = () => {
               <input 
                 type="text" 
                 className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Dr. Rajesh Sharma" 
+                placeholder="Enter your full name" 
                 value={fullName}
                 onChange={(e) => setFullName(e.target.value)}
                 required={isSignUp}
@@ -79,7 +79,7 @@ const Login = () => {
             <input 
               type="text" 
               className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="dr_rajesh" 
+              placeholder="Enter Username" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required 
