@@ -2,11 +2,11 @@ import React, { useState, useEffect, useRef } from "react";
 import { Stethoscope } from "@phosphor-icons/react";
 import { 
   Activity, Bell, Calendar, History, Heart, 
-  Siren, Menu, MapPin, Check, WifiOff, LogOut // 1. Added LogOut Icon
+  Siren, Menu, MapPin, Check, WifiOff, LogOut 
 } from "lucide-react";
 import { supabase } from "../lib/supabase"; 
 import HistoryTab from "../pages/HistoryTab"; 
-import { useAuth } from "../contexts/AuthContext"; // 2. Import Auth
+import { useAuth } from "../contexts/AuthContext"; 
 
 // --- UTILITY ---
 function cn(...classes: (string | undefined | null | false)[]) {
@@ -40,7 +40,7 @@ const Switch = ({ checked, onCheckedChange }: any) => (
 
 // --- MAIN DASHBOARD ---
 const DoctorDashboard = () => {
-  const { user, logout } = useAuth(); // 3. Get User & Logout
+  const { user, logout } = useAuth(); // We need 'user' to get the ID
   
   const [isOnline, setIsOnline] = useState(true); 
   const [activeTab, setActiveTab] = useState("live");
@@ -117,21 +117,25 @@ const DoctorDashboard = () => {
 
   // --- HANDLE RESPONSE ---
   const handleResponse = async (accepted: boolean) => {
-    if (!currentEmergency) return;
+    if (!currentEmergency || !user) return; // Ensure user is present
 
+    // 1. Optimistic UI Update
     setShowPopup(false); 
     setRespondedIds(prev => new Set(prev).add(currentEmergency.id)); 
     setRequests(prev => prev.map(r => r.id === currentEmergency.id ? { ...r, status: accepted ? 'Accepted' : 'Declined' } : r));
 
+    // 2. Insert Response (Now includes Doctor ID)
     await supabase.from('Hospital_Responses').insert([{
         emergency_id: currentEmergency.id,   
         hospital_name: "City General Hospital", 
         bed_availability: accepted,          
         medical_advice: accepted ? "Ambulance dispatched." : "Redirecting.",
         eta: accepted ? "10 mins" : "N/A",
-        responded_at: new Date().toISOString()
+        responded_at: new Date().toISOString(),
+        responded_by_id: user.id // <--- 🌟 NEW FIELD ADDED HERE
     }]);
 
+    // 3. Update Emergency Status
     await supabase
         .from('Emergencies')
         .update({ status: accepted ? 'Accepted' : 'Declined' })
@@ -153,7 +157,6 @@ const DoctorDashboard = () => {
     return diff < 1 ? "Just now" : `${diff}m ago`;
   };
 
-  // Helper to get initials (e.g., "Rajesh Sharma" -> "RS")
   const getInitials = (name: string) => {
     if (!name) return "Dr";
     return name.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
@@ -192,7 +195,7 @@ const DoctorDashboard = () => {
           />
         </nav>
 
-        {/* 4. LOGOUT PROFILE SECTION */}
+        {/* LOGOUT PROFILE SECTION */}
         <button 
           onClick={logout}
           className="group flex items-center gap-3 p-3 rounded-xl bg-slate-50 border border-slate-100 mt-auto hover:bg-red-50 hover:border-red-100 transition-all text-left"
