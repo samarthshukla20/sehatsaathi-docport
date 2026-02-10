@@ -11,7 +11,15 @@ interface User {
 interface AuthContextType {
   user: User | null;
   login: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  signup: (fullName: string, username: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  // 🌟 UPDATED: Signup now accepts contact and location
+  signup: (
+    fullName: string, 
+    username: string, 
+    password: string, 
+    contact: string,
+    lat: number | null,
+    long: number | null
+  ) => Promise<{ success: boolean; error?: string }>;
   logout: () => void;
   isLoading: boolean;
 }
@@ -30,7 +38,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // 1. Check Local Storage on Load (Persist Login)
   useEffect(() => {
     const stored = localStorage.getItem("sehatsaathi_user");
     if (stored) {
@@ -39,21 +46,19 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     setIsLoading(false);
   }, []);
 
-  // 2. LOGIN LOGIC (Check Database)
   const login = async (username: string, password: string) => {
     try {
       const { data, error } = await supabase
         .from("doctor_access")
         .select("*")
         .eq("username", username)
-        .eq("password", password) // Simple check
+        .eq("password", password)
         .single();
 
       if (error || !data) {
         return { success: false, error: "Invalid username or password" };
       }
 
-      // Success! Save user
       const userData = { id: data.id, name: data.full_name, username: data.username };
       setUser(userData);
       localStorage.setItem("sehatsaathi_user", JSON.stringify(userData));
@@ -64,10 +69,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // 3. SIGNUP LOGIC (Insert into Database)
-  const signup = async (fullName: string, username: string, password: string) => {
+  // 🌟 UPDATED SIGNUP LOGIC
+  const signup = async (
+    fullName: string, 
+    username: string, 
+    password: string,
+    contact: string,
+    lat: number | null,
+    long: number | null
+  ) => {
     try {
-      // Check if username taken
       const { data: existing } = await supabase
         .from("doctor_access")
         .select("id")
@@ -78,10 +89,16 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         return { success: false, error: "Username already exists." };
       }
 
-      // Insert new user
       const { error } = await supabase
         .from("doctor_access")
-        .insert([{ full_name: fullName, username, password }]);
+        .insert([{ 
+            full_name: fullName, 
+            username, 
+            password,
+            contact: contact ? parseInt(contact) : null, // Convert string to number/bigint
+            loc_lat: lat,
+            loc_long: long
+        }]);
 
       if (error) throw error;
 
@@ -91,7 +108,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   };
 
-  // 4. LOGOUT
   const logout = () => {
     setUser(null);
     localStorage.removeItem("sehatsaathi_user");

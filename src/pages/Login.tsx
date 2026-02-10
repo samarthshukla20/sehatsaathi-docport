@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../contexts/AuthContext"; 
-import { Stethoscope } from "lucide-react"; 
+import { Stethoscope, MapPin } from "lucide-react"; 
 
 const Login = () => {
   const navigate = useNavigate();
@@ -12,22 +12,50 @@ const Login = () => {
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [contact, setContact] = useState(""); // 📱 New State
   const [errorMsg, setErrorMsg] = useState("");
+  const [locationStatus, setLocationStatus] = useState(""); // 📍 To show "Fetching location..."
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     setErrorMsg("");
+    setLocationStatus("");
 
     if (isSignUp) {
-      // --- SIGN UP ---
-      const res = await signup(fullName, username, password);
+      // --- SIGN UP WITH LOCATION ---
+      
+      // 1. Try to get Location
+      let lat = null;
+      let long = null;
+
+      try {
+        setLocationStatus("Acquiring location...");
+        const position = await new Promise<GeolocationPosition>((resolve, reject) => {
+            navigator.geolocation.getCurrentPosition(resolve, reject, { timeout: 5000 });
+        });
+        lat = position.coords.latitude;
+        long = position.coords.longitude;
+        setLocationStatus("Location secured.");
+      } catch (err) {
+        console.warn("Could not get location:", err);
+        setLocationStatus("Using without location.");
+      }
+
+      // 2. Submit to Supabase
+      const res = await signup(fullName, username, password, contact, lat, long);
+      
       if (res.success) {
         alert("Account created! You can now log in.");
-        setIsSignUp(false); // Switch to login view
+        setIsSignUp(false); 
+        // Reset form
+        setFullName("");
+        setContact("");
+        setLocationStatus("");
       } else {
         setErrorMsg(res.error || "Signup failed");
       }
+
     } else {
       // --- LOGIN ---
       const res = await login(username, password);
@@ -61,17 +89,33 @@ const Login = () => {
         <form onSubmit={handleAuth} className="space-y-4">
           
           {isSignUp && (
-            <div className="space-y-1">
-              <label className="text-sm font-bold text-slate-700">Full Name</label>
-              <input 
-                type="text" 
-                className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-                placeholder="Enter your full name" 
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                required={isSignUp}
-              />
-            </div>
+            <>
+                <div className="space-y-1">
+                <label className="text-sm font-bold text-slate-700">Full Name</label>
+                <input 
+                    type="text" 
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Enter your full name" 
+                    value={fullName}
+                    onChange={(e) => setFullName(e.target.value)}
+                    required={isSignUp}
+                />
+                </div>
+
+                <div className="space-y-1">
+                <label className="text-sm font-bold text-slate-700">Contact Number</label>
+                <input 
+                    type="tel" 
+                    className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                    placeholder="Enter your contact number" 
+                    value={contact}
+                    onChange={(e) => setContact(e.target.value)}
+                    required={isSignUp}
+                    pattern="[0-9]{10}"
+                    title="Please enter a valid 10-digit number"
+                />
+                </div>
+            </>
           )}
 
           <div className="space-y-1">
@@ -79,7 +123,7 @@ const Login = () => {
             <input 
               type="text" 
               className="w-full p-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
-              placeholder="Enter Username" 
+              placeholder="Enter your username" 
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               required 
@@ -97,6 +141,14 @@ const Login = () => {
               required 
             />
           </div>
+
+          {/* Location Status Indicator */}
+          {isSignUp && locationStatus && (
+             <div className="flex items-center gap-2 text-xs text-sky-600 bg-sky-50 p-2 rounded justify-center">
+                <MapPin className="h-3 w-3 animate-bounce" />
+                {locationStatus}
+             </div>
+          )}
 
           <button 
             type="submit" 
